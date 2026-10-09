@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador — Parafinas y Vaselinas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+  :root{
+    --green:#C8D79C; --cream:#F2E5A1; --blue:#3170B7; --paper:#FBFDF0; --ink:#2F3617;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+    box-sizing:border-box;
+  }
+  html,body{height:100%;}
+  body{background:var(--paper); color:var(--ink); font-family:-apple-system,'SF Pro Rounded',ui-rounded,'Segoe UI',Roboto,sans-serif; margin:0;}
+  .btn-press:active{transform:scale(0.97);}
+  .card-tap{transition:all .18s ease;}
+  .fade-in{animation:fadein .35s ease both;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {useState} = React;
+const e = React.createElement;
+const C = {green:'#C8D79C', cream:'#F2E5A1', blue:'#3170B7', paper:'#FBFDF0', ink:'#2F3617'};
+
+function greenDark(){ return '#b9cb84'; } // slightly darker hover for green
+
+const QUESTIONS = [
+  {
+    q: '¿Cuál es la principal diferencia entre las parafinas y las vaselinas?',
+    opts: [
+      'Las parafinas son líquidas y las vaselinas sólidas.',
+      'Las parafinas son de origen natural y las vaselinas sintéticas.',
+      'Las parafinas son sólidas y cerosas, mientras que las vaselinas son más blandas y semisólidas.',
+      'No hay diferencias entre ellas.'
+    ],
+    correct: 2,
+    exp: 'La parafina tiene consistencia cerosa y firme; la vaselina es una mezcla semisólida, más blanda y untuosa.'
+  },
+  {
+    q: '¿En qué productos se utilizan principalmente las parafinas?',
+    opts: ['En cosméticos y cremas.', 'En velas y ceras.', 'En medicamentos orales.', 'En pinturas y barnices.'],
+    correct: 1,
+    exp: 'Gracias a su punto de fusión y capacidad de moldeado, la parafina es la base clásica de velas y ceras.'
+  },
+  {
+    q: '¿Cuál de estas opciones es un uso común de la vaselina?',
+    opts: ['En la fabricación de plásticos.', 'Como lubricante y humectante de la piel.', 'En la producción de combustible.', 'Como conservante de alimentos.'],
+    correct: 1,
+    exp: 'La vaselina forma una capa protectora sobre la piel, ideal como lubricante y humectante.'
+  },
+  {
+    q: '¿Qué propiedad hace que la vaselina sea tan útil en el cuidado de la piel?',
+    opts: ['Su capacidad de disolver aceites.', 'Su poder de absorber la humedad.', 'Su textura espesa y oclusiva que evita la pérdida de agua.', 'Su efecto exfoliante.'],
+    correct: 2,
+    exp: 'Al ser oclusiva, crea una barrera que retiene el agua natural de la piel en lugar de absorberla.'
+  },
+  {
+    q: '¿Cuál de estas imágenes muestra una parafina?',
+    isImage: true,
+    opts: [
+      {icon:'🕯️', label:'Velas blancas'},
+      {icon:'🫙', label:'Recipiente de vaselina'},
+      {icon:'❄️', label:'Parafina en escamas'},
+      {icon:'🧴', label:'Crema blanca'}
+    ],
+    correct: 2,
+    exp: 'La parafina se comercializa comúnmente en escamas o perlas sólidas de color blanco.'
+  }
+];
+
+function Waves(){
+  return e('svg',{viewBox:'0 0 400 60', preserveAspectRatio:'none', className:'w-full h-14 block', 'aria-hidden':'true'},
+    e('path',{d:'M0,30 C100,60 300,0 400,30 L400,60 L0,60 Z', fill:C.green, opacity:0.9}),
+    e('path',{d:'M0,40 C120,15 280,55 400,25 L400,60 L0,60 Z', fill:C.blue, opacity:0.35})
+  );
+}
+
+function Logo(){
+  return e('svg',{width:72, height:72, viewBox:'0 0 72 72'},
+    e('path',{d:'M36 6 C50 28 58 38 58 48 A22 22 0 1 1 14 48 C14 38 22 28 36 6 Z', fill:C.blue, opacity:0.9}),
+    e('path',{d:'M24 50 C30 42 42 42 48 50 C44 58 28 58 24 50 Z', fill:C.green})
+  );
+}
+
+function ProgressDots({current, total}){
+  return e('div',{className:'flex gap-2 justify-center'},
+    Array.from({length: total}).map((_, i) =>
+      e('div',{key:i, className:'w-2.5 h-2.5 rounded-full', style:{
+        background: i <= current ? C.green : 'transparent',
+        border: `2px solid ${C.green}`
+      }})
+    )
+  );
+}
+
+function Home({onStart}){
+  return e('div',{className:'min-h-screen flex flex-col justify-between'},
+    e('div',{className:'flex-1 flex flex-col items-center justify-center px-6 text-center fade-in'},
+      e(Logo),
+      e('h1',{className:'text-3xl font-bold mt-5', style:{color:C.ink}}, 'Simulador'),
+      e('p',{className:'mt-3 text-base max-w-xs', style:{color:C.ink}}, '¿Qué tanto sabés sobre las parafinas y vaselinas?'),
+      e('button',{
+        onClick:onStart,
+        className:'btn-press mt-8 px-10 py-3.5 rounded-full font-semibold text-lg transition-colors',
+        style:{background:C.green, color:C.ink},
+        onMouseEnter:(ev)=>ev.currentTarget.style.background=greenDark(),
+        onMouseLeave:(ev)=>ev.currentTarget.style.background=C.green
+      }, 'Comenzar')
+    ),
+    e('div',{}, e(Waves))
+  );
+}
+
+function Quiz({idx, selected, onSelect, onBack, onNext}){
+  const question = QUESTIONS[idx];
+  const isLast = idx === QUESTIONS.length - 1;
+  return e('div',{className:'min-h-screen flex flex-col px-6 pt-6 pb-4 fade-in'},
+    e('div',{className:'flex items-center mb-4'},
+      e('button',{onClick:onBack, 'aria-label':'Volver', className:'text-2xl', style:{color:C.ink}}, '←')
+    ),
+    e(ProgressDots,{current:idx, total:QUESTIONS.length}),
+    e('p',{className:'text-center text-sm mt-2 mb-6', style:{color:C.ink, opacity:0.75}}, `Pregunta ${idx+1} de ${QUESTIONS.length}`),
+    e('h2',{className:'text-xl font-bold text-center mb-6 max-w-md mx-auto', style:{color:C.ink}}, question.q),
+    e('div',{className: question.isImage ? 'grid grid-cols-2 gap-3 max-w-md mx-auto w-full' : 'flex flex-col gap-3 max-w-md mx-auto w-full'},
+      question.opts.map((opt,i) => {
+        const isSel = selected === i;
+        const label = question.isImage ? opt.label : opt;
+        return e('button',{
+          key:i,
+          onClick:()=>onSelect(i),
+          className:'card-tap btn-press text-left rounded-2xl p-4 flex items-center gap-3',
+          style:{
+            background: question.isImage ? C.paper : (isSel ? C.green : `${C.green}55`),
+            border: `2px solid ${isSel ? C.ink : C.green}`,
+            flexDirection: question.isImage ? 'column' : 'row'
+          }
+        },
+          question.isImage
+            ? [e('span',{key:'ic', style:{fontSize:'2.2rem'}}, opt.icon),
+               e('span',{key:'lb', className:'text-sm font-medium text-center', style:{color:C.ink}}, label),
+               e('span',{key:'dot', className:'w-4 h-4 rounded-full', style:{border:`2px solid ${C.ink}`, background:isSel?C.ink:'transparent'}})]
+            : [e('span',{key:'dot', className:'w-5 h-5 rounded-full flex-shrink-0', style:{border:`2px solid ${C.ink}`, background:isSel?C.ink:'transparent'}}),
+               e('span',{key:'lb', className:'text-sm font-medium', style:{color:C.ink}}, label)]
+        );
+      })
+    ),
+    e('div',{className:'flex-1'}),
+    e('button',{
+      onClick:onNext,
+      disabled: selected === null,
+      className:'btn-press max-w-md mx-auto w-full mt-6 py-3.5 rounded-full font-semibold text-lg',
+      style:{background:C.green, color:C.ink, opacity: selected===null ? 0.5 : 1}
+    }, isLast ? 'Ver resultado' : 'Siguiente →')
+  );
+}
+
+function Feedback({correct, correctText, exp, onContinue}){
+  return e('div',{className:'min-h-screen flex flex-col items-center justify-center px-6 text-center fade-in'},
+    e('div',{className:'max-w-sm w-full rounded-3xl p-8', style:{background: correct ? C.green : C.cream}},
+      e('h2',{className:'text-2xl font-bold mb-4', style:{color:C.ink}}, correct ? '¡Muy bien!' : '¡Casi!'),
+      e('p',{className:'text-sm font-medium mb-1', style:{color:C.ink}}, correct ? 'La respuesta correcta es:' : 'La respuesta correcta era:'),
+      e('p',{className:'text-base font-semibold mb-4', style:{color:C.ink}}, correctText),
+      e('p',{className:'text-sm', style:{color:C.ink, opacity:0.85}}, exp)
+    ),
+    e('button',{
+      onClick:onContinue,
+      className:'btn-press mt-8 px-10 py-3 rounded-full font-semibold',
+      style:{background:C.paper, color:C.ink, border:`2px solid ${C.ink}`}
+    }, 'Continuar')
+  );
+}
+
+function scoreMessage(score){
+  if (score === 5) return '¡Excelente! Dominás muy bien los conceptos sobre parafinas y vaselinas.';
+  if (score === 4) return '¡Muy bien! Ya conocés bastante sobre las parafinas y vaselinas.';
+  if (score === 3) return '¡Buen trabajo! Tenés una buena base, pero todavía podés aprender un poco más.';
+  if (score >= 1) return '¡Seguí aprendiendo! Revisá los conceptos y volvé a intentarlo.';
+  return 'No te preocupes. Podés volver a intentarlo y aprender con cada pregunta.';
+}
+
+function Result({score, onRetry, onHome}){
+  return e('div',{className:'min-h-screen flex flex-col justify-between'},
+    e('div',{className:'flex-1 flex flex-col items-center justify-center px-6 text-center fade-in'},
+      e('h1',{className:'text-2xl font-bold mb-6', style:{color:C.ink}}, '¡Simulador terminado!'),
+      e('div',{className:'rounded-3xl px-10 py-8', style:{background:C.green}},
+        e('p',{className:'text-sm font-medium mb-1', style:{color:C.ink}}, 'Tu resultado:'),
+        e('p',{className:'text-5xl font-bold', style:{color:C.ink}}, `${score} / 5`),
+        e('p',{className:'text-sm mt-1', style:{color:C.ink}}, 'respuestas correctas')
+      ),
+      e('p',{className:'mt-6 max-w-xs text-sm', style:{color:C.ink}}, scoreMessage(score)),
+      e('div',{className:'flex flex-col gap-3 mt-8 w-full max-w-xs'},
+        e('button',{onClick:onRetry, className:'btn-press py-3.5 rounded-full font-semibold', style:{background:C.green, color:C.ink}}, '↻ Volver a intentar'),
+        e('button',{onClick:onHome, className:'btn-press py-3.5 rounded-full font-semibold', style:{background:C.paper, color:C.ink, border:`2px solid ${C.green}`}}, '⌂ Volver al inicio')
+      )
+    ),
+    e('div',{}, e(Waves))
+  );
+}
+
+function App(){
+  const [screen, setScreen] = useState('home');
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [score, setScore] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  function reset(){
+    setScreen('home'); setCurrentQuestion(0); setSelectedAnswer(null); setScore(0); setShowFeedback(false);
+  }
+
+  function handleNext(){
+    if (selectedAnswer === null) return;
+    const q = QUESTIONS[currentQuestion];
+    if (selectedAnswer === q.correct) setScore(s => s + 1);
+    setShowFeedback(true);
+  }
+
+  function handleFeedbackContinue(){
+    setShowFeedback(false);
+    setSelectedAnswer(null);
+    if (currentQuestion === QUESTIONS.length - 1){
+      setScreen('result');
+    } else {
+      setCurrentQuestion(c => c + 1);
+    }
+  }
+
+  if (screen === 'home') return e(Home,{onStart:()=>setScreen('quiz')});
+
+  if (screen === 'quiz'){
+    if (showFeedback){
+      const q = QUESTIONS[currentQuestion];
+      const correctText = q.isImage ? q.opts[q.correct].label : q.opts[q.correct];
+      return e(Feedback,{
+        correct: selectedAnswer === q.correct,
+        correctText, exp: q.exp,
+        onContinue: handleFeedbackContinue
+      });
+    }
+    return e(Quiz,{
+      idx: currentQuestion,
+      selected: selectedAnswer,
+      onSelect: setSelectedAnswer,
+      onBack: ()=> currentQuestion === 0 ? setScreen('home') : (setCurrentQuestion(c=>c-1), setSelectedAnswer(null)),
+      onNext: handleNext
+    });
+  }
+
+  if (screen === 'result') return e(Result,{score, onRetry:reset, onHome:reset});
+
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+</script>
+</body>
+</html>
